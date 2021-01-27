@@ -10,6 +10,8 @@
 /[Ll]ogs/
 /[Mm]emoryCaptures/
 
+/[Aa]ssets/**/*.meta
+/**/*.meta
 *.meta
 
 # Uncomment this line if you wish to ignore the asset store tools plugin
