@@ -6,10 +6,11 @@ using UnityEngine.SceneManagement;
 
 enum InteractionPanelState
 {
-    None,
-    Unit,
-    //Build,
-    Camp
+    NONE,
+    UNIT,
+    //BUILD,
+    CAMP,
+    INN
 }
 
 public class UIManager : MonoBehaviour
@@ -27,16 +28,28 @@ public class UIManager : MonoBehaviour
     public GameObject unitInteractionPanel;
     public GameObject buildInteractionPanel;
     public GameObject campInteractionPanel;
-    InteractionPanelState currentInteractionState;
+    public GameObject innInteractionPanel;
+    [Space]
+    public TextMeshProUGUI infoText;
+    public TextMeshProUGUI victoryText;
+    public string victoryMessage = "Victory!";
+    public string defeatMessage = "Try again?";
+    public float mainMenuTimeout = 5f;
 
-    void Start()
+    private InteractionPanelState currentInteractionState;
+
+
+    private void Awake()
     {
         if (instance == null)
             instance = this;
         else
             Debug.LogError("Another UI manager present.");
+    }
 
-        currentInteractionState = InteractionPanelState.None;
+    private void Start()
+    {
+        currentInteractionState = InteractionPanelState.NONE;
 
         Destroy(Instantiate(fadeUncoverPanel), 1f);
     }
@@ -44,6 +57,14 @@ public class UIManager : MonoBehaviour
     private void Update()
     {
         UpdateResourceText();
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (GameManager.instance.isPaused)
+                UnPauseGameTab();
+            else
+                PauseGameTab();
+        }  
     }
 
     private void UpdateResourceText()
@@ -74,7 +95,7 @@ public class UIManager : MonoBehaviour
         StartCoroutine(LoadMainMenuCo());
     }
 
-    IEnumerator UnPauseCo()
+    private IEnumerator UnPauseCo()
     {
         pauseMenu.GetComponent<Animator>().SetTrigger("fadeOut");
         yield return new WaitForSecondsRealtime(0.5f);
@@ -82,7 +103,7 @@ public class UIManager : MonoBehaviour
         GameManager.instance.UnPauseGameState();
     }
 
-    IEnumerator LoadMainMenuCo()
+    private IEnumerator LoadMainMenuCo()
     {
         Instantiate(fadeCoverPanel);
         AsyncOperation asyncOperation = SceneManager.LoadSceneAsync("MainMenu");
@@ -100,11 +121,13 @@ public class UIManager : MonoBehaviour
     {
         DisableCurrentInteractionPanel();
         if (SelectionManager.instance.selectedUnits.Count > 0)
-            EnableInteractionPanel(InteractionPanelState.Unit);
+            EnableInteractionPanel(InteractionPanelState.UNIT);
         else if (SelectionManager.instance.selectedBuilding != null)
         {
             if (SelectionManager.instance.selectedBuilding.gameObject.GetComponent<ResourceCamp>() != null)
-                EnableInteractionPanel(InteractionPanelState.Camp);
+                EnableInteractionPanel(InteractionPanelState.CAMP);
+            else if (SelectionManager.instance.selectedBuilding.gameObject.GetComponent<VillagerInn>() != null)
+                EnableInteractionPanel(InteractionPanelState.INN);
             else
                 Debug.Log("Unknown UI Panel for Selected Building");
         }
@@ -115,43 +138,164 @@ public class UIManager : MonoBehaviour
 
     void DisableCurrentInteractionPanel()
     {
-        if (currentInteractionState == InteractionPanelState.None)
+        if (currentInteractionState == InteractionPanelState.NONE)
             return;
         switch (currentInteractionState)
         {
-            case InteractionPanelState.Unit:
+            case InteractionPanelState.UNIT:
                 {
                     unitInteractionPanel.SetActive(false);
                     buildInteractionPanel.SetActive(false); //we also disable the build panel in case the unit was on the build panel when it was deselected
                 }
                 break;
-            case InteractionPanelState.Camp:
+            case InteractionPanelState.CAMP:
                 campInteractionPanel.SetActive(false);
                 break;
+            case InteractionPanelState.INN:
+                innInteractionPanel.SetActive(false);
+                break;
         }
-        currentInteractionState = InteractionPanelState.None;
+        currentInteractionState = InteractionPanelState.NONE;
         return;
     }
 
     void EnableInteractionPanel(InteractionPanelState newInteractionState)
     {
-        if (newInteractionState == InteractionPanelState.None)
+        if (newInteractionState == InteractionPanelState.NONE)
             return;
         switch (newInteractionState)
         {
-            case InteractionPanelState.Unit:
+            case InteractionPanelState.UNIT:
                 {
                     unitInteractionPanel.SetActive(true);
-                    currentInteractionState = InteractionPanelState.Unit;
+                    currentInteractionState = InteractionPanelState.UNIT;
                 }
                 return;
-            case InteractionPanelState.Camp:
+            case InteractionPanelState.CAMP:
                 {
                     campInteractionPanel.SetActive(true);
-                    currentInteractionState = InteractionPanelState.Camp;
+                    currentInteractionState = InteractionPanelState.CAMP;
+                }
+                break;
+            case InteractionPanelState.INN:
+                {
+                    innInteractionPanel.SetActive(true);
+                    currentInteractionState = InteractionPanelState.INN;
                 }
                 return;
         }
         return;
+    }
+
+    public void BuildPanelConstructCamp()
+    {
+        ConstructionManager.instance.StartPreviewResourceCampConstruction();
+    }
+
+    public void BuildPanelConstructInn()
+    {
+        ConstructionManager.instance.StartPreviewVillagerInnConstruction();
+    }
+
+    public void BuildPanelCancelBuildPreview()
+    {
+        ConstructionManager.instance.StopPreviewBuildingGO();
+        ConstructionManager.instance.StopPreviewBuildingBool();
+    }
+
+    public void InnPanelRecruitVillager()
+    {
+        VillagerInn villagerInn = SelectionManager.instance.selectedBuilding.gameObject.GetComponent<VillagerInn>();
+        if (villagerInn != null)
+            villagerInn.RecruitVillager();
+        else
+            Debug.LogError("Villager Inn building not selected but recruit button was pressed");
+    }
+
+    public void UnitPanelStopAction()
+    {
+        foreach (Unit unit in SelectionManager.instance.selectedUnits)
+            unit.StopAction();
+    }
+
+    public void AdjustCameraXRotationSetting(float valueXRotation)
+    {
+        CameraController.instance.AdjustXRotation(valueXRotation);
+        GamePrefsManager.instance.SaveCameraXRotationPref(valueXRotation);
+    }
+
+    public void AdjustCameraFOVSetting(float valueFOV)
+    {
+        CameraController.instance.AdjustFieldOfView(valueFOV);
+        GamePrefsManager.instance.SaveCameraFieldOfViewPref(valueFOV);
+    }
+
+    public void ToggleCameraSnapRotationSetting(bool snapRotationActive)
+    {
+        CameraController.instance.ToggleSnapRotation(snapRotationActive);
+        GamePrefsManager.instance.SaveCameraSnapRotationPref(snapRotationActive);
+    }
+
+    public void ToggleCameraMouseMovementSetting(bool movementByMouseActive)
+    {
+        CameraController.instance.ToggleMovementByMouse(movementByMouseActive);
+        GamePrefsManager.instance.SaveCameraMovementByMousePref(movementByMouseActive);
+    }
+
+    public void QuickSaveButton()
+    {
+        SaveLoadSystem.instance.SaveGame();
+    }
+
+    public void QuickLoadButton()
+    {
+        if (SaveLoadSystem.instance.saveFileExists.saveToBeLoaded)
+            SaveLoadSystem.instance.LoadGame();
+        else
+            ShowScreenAlert("No save file found.");
+    }
+
+    public void ShowScreenAlert(string message, float seconds = 5f)
+    {
+        if(infoText.text != message)
+            StartCoroutine(ShowScreenAlertCo(message, seconds));
+    }
+
+    public void GameOverUI(bool playerWin)
+    {
+        victoryText.gameObject.SetActive(true);
+
+        if (playerWin)
+        {
+            victoryText.text = victoryMessage;
+            victoryText.color = GameManager.instance.playerMaterial.color;
+        }
+        else
+        {
+            victoryText.text = defeatMessage;
+            victoryText.color = GameManager.instance.enemyMaterial.color;
+        }
+
+        StartCoroutine(GameOverMainMenu());
+    }
+
+    private IEnumerator ShowScreenAlertCo(string message, float seconds)
+    {
+        infoText.gameObject.SetActive(true);
+        infoText.text = message;
+
+        yield return new WaitForSeconds(seconds);
+
+        if (infoText.text == message)
+        {
+            infoText.text = "";
+            infoText.gameObject.SetActive(false);
+        }
+    }
+
+    private IEnumerator GameOverMainMenu()
+    {
+        yield return new WaitForSeconds(mainMenuTimeout);
+        LoadMainMenu();
     }
 }

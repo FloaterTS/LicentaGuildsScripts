@@ -1,12 +1,5 @@
 ﻿using UnityEngine;
 
-public enum UnitState
-{
-    idle,
-    moving,
-    working,
-    attacking
-}
 
 public class InteractionManager : MonoBehaviour
 {
@@ -14,15 +7,17 @@ public class InteractionManager : MonoBehaviour
 
     private SelectionManager selectionManager;
 
-
-    void Start()
+    private void Awake()
     {
         if (instance == null)
             instance = this;
         else
             Debug.LogError("Another unit interaction manager present.");
+    }
 
-        selectionManager = GetComponent<SelectionManager>();
+    void Start()
+    {
+        selectionManager = SelectionManager.instance;
     }
 
     void Update()
@@ -32,56 +27,104 @@ public class InteractionManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(1))
         {
-            if (selectionManager.selectedUnits.Count > 0)
-                PerformInteraction();
+            CheckInteraction();
         }
     }
 
-    void PerformInteraction()
+    void CheckInteraction()
     {
-        Ray rayLocation = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(rayLocation, out RaycastHit hitLocation, 1000f, LayerMask.GetMask("Interactable", "Terrain")))
+        if (selectionManager.selectedUnits.Count > 0)
         {
-            if (hitLocation.collider.gameObject.CompareTag("Resource"))
+            Ray rayLocation = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(rayLocation, out RaycastHit hitLocation, 1000f, LayerMask.GetMask("Interactable", "Terrain")))
             {
-                ResourceField resource = hitLocation.collider.GetComponent<ResourceField>();
-                if (resource != null)
-                {
-                    foreach (Unit unit in selectionManager.selectedUnits)
-                        if (unit.worker != null)
-                            unit.worker.CollectResource(resource);
-                }
+                PerformInteraction(hitLocation);
             }
-            else if (hitLocation.collider.gameObject.CompareTag("ResourceCamp"))
+        }
+    }
+
+    public void PerformInteraction(RaycastHit hitLocation)
+    {
+
+        if (hitLocation.collider.gameObject.CompareTag("Resource"))
+        {
+            ResourceField resourceField = hitLocation.collider.GetComponent<ResourceField>();
+            if (resourceField != null)
             {
-                ResourceCamp resourceCamp = hitLocation.collider.GetComponent<ResourceCamp>();
-                if (resourceCamp != null)
-                {
-                    foreach (Unit unit in selectionManager.selectedUnits)
-                        if (unit.worker != null)
-                            unit.worker.StoreResource(resourceCamp);
-                }
+                foreach (Unit unit in selectionManager.selectedUnits)
+                    if (unit.worker != null)
+                        unit.worker.CollectResource(resourceField);
             }
-            else if(hitLocation.collider.gameObject.CompareTag("UnderConstruction"))
+            else
+                Debug.LogError("ResourceField script missing from " + hitLocation.collider.gameObject + " tagged as ResourceField");
+        }
+        else if (hitLocation.collider.gameObject.CompareTag("ResourceCamp"))
+        {
+            ResourceCamp resourceCamp = hitLocation.collider.GetComponent<ResourceCamp>();
+            if (resourceCamp != null)
+            {
+                foreach (Unit unit in selectionManager.selectedUnits)
+                    if (unit.worker != null)
+                        unit.worker.StoreResource(resourceCamp);
+            }
+            else
+                Debug.LogError("ResourceCamp script missing from " + hitLocation.collider.gameObject + " tagged as ResourceCamp");
+        }
+        else if (hitLocation.collider.gameObject.CompareTag("ResourceDrop"))
+        {
+            ResourceDrop resourceDrop = hitLocation.collider.GetComponent<ResourceDrop>();
+            if (resourceDrop != null)
+            {
+                Unit closestUnit = selectionManager.ClosestUnitToSpot(hitLocation.point, true);
+                if (closestUnit != null)
+                    closestUnit.worker.PickUpResourceAction(resourceDrop);
+            }
+            else
+                Debug.LogError("ResourceDrop script missing from " + hitLocation.collider.gameObject + " tagged as ResourceDrop");
+        }
+        else if (hitLocation.collider.gameObject.CompareTag("UnderConstruction"))
+        {
+            if (hitLocation.collider.GetComponent<UnderConstruction>() != null)
             {
                 foreach (Unit unit in selectionManager.selectedUnits)
                     if (unit.worker != null)
                         unit.worker.StartConstruction(hitLocation.collider.gameObject);
             }
             else
+                Debug.LogError("UnderConstruction script missing from " + hitLocation.collider.gameObject + " tagged as UnderConstruction");
+        }
+        else if(hitLocation.collider.gameObject.CompareTag("Unit"))
+        {
+            Unit enemyUnit = hitLocation.collider.GetComponent<Unit>();
+            if (enemyUnit != null)
             {
-                MoveToSpot(hitLocation);
+                if (enemyUnit.unitStats.unitTeam != Team.PLAYER)
+                {
+                    foreach (Unit unit in selectionManager.selectedUnits)
+                        if (unit.fighter != null)
+                            unit.fighter.AttackCommand(enemyUnit.gameObject, true);
+                }
+                else
+                {
+                    MoveToSpot(hitLocation.point);
+                }
             }
+            else
+                Debug.LogError("Unit script missing from " + hitLocation.collider.gameObject + " tagged as Unit");
+        }
+        else
+        {
+            MoveToSpot(hitLocation.point);
         }
     }
 
 
-    void MoveToSpot(RaycastHit hitLocation)
+    void MoveToSpot(Vector3 spot)
     {
         if (selectionManager.selectedUnits.Count == 1)
-            selectionManager.selectedUnits[0].MoveToLocation(hitLocation.point);
+            selectionManager.selectedUnits[0].MoveToLocation(spot);
         else
-            MovementManager.instance.MoveInFormation(hitLocation.point);
+            MovementManager.instance.MoveInFormation(spot);
     }
 
 }

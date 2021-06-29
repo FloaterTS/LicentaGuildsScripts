@@ -3,21 +3,29 @@ using UnityEngine;
 
 public enum ResourceType
 {
-    Food,
-    Wood,
-    Gold,
-    None
+    FOOD,
+    WOOD,
+    GOLD,
+    NONE
 }
 
 public enum ResourceRaw
 {
-    Berries,
-    Gold,
-    Wood,
-    Fish,
-    Farm
+    BERRIES,
+    GOLD,
+    WOOD,
+    FARM
 }
 
+[System.Serializable]
+public struct ResourceCost
+{
+    public int foodCost;
+    public int woodCost;
+    public int goldCost;
+}
+
+[System.Serializable]
 public struct CarriedResource
 {
     public int amount;
@@ -28,13 +36,17 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
+    public int initialFoodAmount = 0;
+    public int initialWoodAmount = 0;
+    public int initialGoldAmount = 0;
+
     [HideInInspector] public int currentFoodAmount;
-    [HideInInspector] public int currentGoldAmount;
     [HideInInspector] public int currentWoodAmount;
+    [HideInInspector] public int currentGoldAmount;
 
     [HideInInspector] public List<ResourceCamp> resourceCamps;
 
-    void Awake()
+    private void Awake()
     {
         if (instance == null)
             instance = this;
@@ -42,14 +54,18 @@ public class ResourceManager : MonoBehaviour
             Debug.LogError("Another resource manager present.");
 
         resourceCamps = new List<ResourceCamp>();
+
+        currentFoodAmount = initialFoodAmount;
+        currentWoodAmount = initialWoodAmount;
+        currentGoldAmount = initialGoldAmount;
     }
 
-    void Update()
+    private void Update()
     {
-        GetResourceAmount();
+        //GetResourceAmount();
     }
 
-    void GetResourceAmount()
+    private void GetResourceAmount()
     {
         int newFoodAmount = 0;
         int newGoldAmount = 0;
@@ -58,13 +74,13 @@ public class ResourceManager : MonoBehaviour
         {
             switch (resourceCamp.campType)
             {
-                case ResourceType.Food:
+                case ResourceType.FOOD:
                     newFoodAmount += resourceCamp.amountStored;
                     break;
-                case ResourceType.Gold:
+                case ResourceType.GOLD:
                     newGoldAmount += resourceCamp.amountStored;
                     break;
-                case ResourceType.Wood:
+                case ResourceType.WOOD:
                     newWoodAmount += resourceCamp.amountStored;
                     break;
             }
@@ -74,19 +90,63 @@ public class ResourceManager : MonoBehaviour
         currentWoodAmount = newWoodAmount;
     }
 
+    public void AddResources(int amount, ResourceType resourceType)
+    {
+        switch (resourceType)
+        {
+            case ResourceType.FOOD:
+                currentFoodAmount += amount;
+                break;
+            case ResourceType.WOOD:
+                currentWoodAmount += amount;
+                break;
+            case ResourceType.GOLD:
+                currentGoldAmount += amount;
+                break;
+        }
+    }
+
+    public bool UseResources(ResourceCost resourceCost, bool check = false)
+    {
+        if (currentFoodAmount >= resourceCost.foodCost)
+        {
+            if (currentWoodAmount >= resourceCost.woodCost)
+            {
+                if (currentGoldAmount >= resourceCost.goldCost)
+                {
+                    if (!check)
+                    {
+                        currentFoodAmount -= resourceCost.foodCost;
+                        currentWoodAmount -= resourceCost.woodCost;
+                        currentGoldAmount -= resourceCost.goldCost;
+                    }
+                    return true;
+                }
+                else
+                    UIManager.instance.ShowScreenAlert("Not enough gold... " + resourceCost.goldCost + " gold needed!");
+            }
+            else
+                UIManager.instance.ShowScreenAlert("Not enough wood..." + resourceCost.woodCost + " wood needed!");
+        }
+        else
+            UIManager.instance.ShowScreenAlert("Not enough food..." + resourceCost.foodCost + " food needed!");
+
+        return false;
+    }
+
     public static ResourceType ResourceRawToType(ResourceRaw resourceRaw)
     {
         switch (resourceRaw)
         {
-            case ResourceRaw.Berries:
-            case ResourceRaw.Farm:
-            case ResourceRaw.Fish:
-                return ResourceType.Food;
-            case ResourceRaw.Gold:
-                return ResourceType.Gold;
-            case ResourceRaw.Wood:
-                return ResourceType.Wood;
+            case ResourceRaw.BERRIES:
+            case ResourceRaw.FARM:
+                return ResourceType.FOOD;
+            case ResourceRaw.GOLD:
+                return ResourceType.GOLD;
+            case ResourceRaw.WOOD:
+                return ResourceType.WOOD;
         }
-        return ResourceType.None;
+        return ResourceType.NONE;
     }
+
 }

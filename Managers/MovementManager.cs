@@ -2,11 +2,11 @@
 
 public enum Formation
 {
-    free,
-    facing,
-    //square,
-    //diamond,
-    none
+    FREE,
+    FACING,
+    //SQUARE,
+    //DIAMOND,
+    NONE
 }
 
 public class MovementManager : MonoBehaviour
@@ -27,14 +27,16 @@ public class MovementManager : MonoBehaviour
     private bool startFromMiddleColumn = false;  // change for formation movement tuning
 
 
-
-    void Start()
+    private void Awake()
     {
         if (instance == null)
             instance = this;
         else
             Debug.LogError("Another unit movement manager present.");
+    }
 
+    void Start()
+    {
         unitSelection = GetComponent<SelectionManager>();
         groundTerrain = GetComponent<GameManager>().mainTerrain;
     }
@@ -55,7 +57,7 @@ public class MovementManager : MonoBehaviour
         int closestUnitIndex;
         for(int i = 0; i < formationPositions.Length; i++)
         {
-            if (formationType == Formation.free)
+            if (formationType == Formation.FREE)
                 farthestSpotIndex = FarthestSpotIndexFrom(formationPositions, assignedSpots, currentMiddlePoint);
             else
                 farthestSpotIndex = i;
@@ -73,11 +75,11 @@ public class MovementManager : MonoBehaviour
     {
         switch(formationType)
         {
-            case Formation.free: return FreeFormation(mainSpot);
-            case Formation.facing: return SquareFormation(mainSpot, true);
-            //case Formation.square: return SquareFormation(mainSpot, false);
-            //case Formation.diamond: return SquareFormation(mainSpot, false, 45f);
-            case Formation.none: return NoFormation(mainSpot);
+            case Formation.FREE: return FreeFormation(mainSpot);
+            case Formation.FACING: return SquareFormation(mainSpot, true);
+            //case Formation.SQUARE: return SquareFormation(mainSpot, false);
+            //case Formation.DIAMOND: return SquareFormation(mainSpot, false, 45f);
+            case Formation.NONE: return NoFormation(mainSpot);
         }
         return null;
     }
@@ -101,7 +103,7 @@ public class MovementManager : MonoBehaviour
         return freeFormationPositions;
     }
 
-    Vector3[] SquareFormation(Vector3 targetCenterSpot, bool faceTargetPosition, float yRotation = 0f)
+    Vector3[] SquareFormation(Vector3 targetCenterSpot, bool faceTargetPosition = true, float yRotation = 0f)
     {
         Vector3[] squareFormationPositions = new Vector3[unitSelection.selectedUnits.Count];
 

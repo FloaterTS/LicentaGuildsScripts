@@ -2,7 +2,7 @@
 
 public class ResourceCamp : MonoBehaviour
 {
-    public ResourceType initialCampType = ResourceType.None;
+    public ResourceType initialCampType = ResourceType.NONE;
     public int initialAmountStored = 0;
 
     [HideInInspector] public ResourceType campType;
@@ -14,21 +14,29 @@ public class ResourceCamp : MonoBehaviour
     private readonly string goldStuffName = "GoldStuff";
     private readonly string woodStuffName = "WoodStuff";
 
-    void Start()
+    void Awake()
     {
-        campType = ResourceType.None;
+        campType = ResourceType.NONE;
         AssignCampType(initialCampType);
         amountStored = initialAmountStored;
 
         accessLocation = transform.position + transform.forward * GetComponent<BoxCollider>().size.z / 2f;
         accessDistance = GetComponent<BoxCollider>().size.x / 2.2f;
+    }
 
+    private void Start()
+    {
         ResourceManager.instance.resourceCamps.Add(this);
+    }
+
+    private void OnDestroy()
+    {
+        ResourceManager.instance.resourceCamps.Remove(this);
     }
 
     void Update()
     {
-        CheckIfEmpty();
+        //CheckIfEmpty();
     }
 
     public void StoreResourceInCamp(int amount, ResourceType resourceType)
@@ -36,12 +44,17 @@ public class ResourceCamp : MonoBehaviour
         if (amount == 0)
             return;
 
-        if (campType == ResourceType.None)
+        if (campType == ResourceType.NONE)
             AssignCampType(resourceType);
         else if (campType != resourceType)
-            Debug.LogError("Error: Trying to store resource to different type camp!");
+        {
+            Debug.LogError("Error: Trying to store resource " + resourceType + " to camp of type: " + campType);
+            return;
+        }
 
         amountStored += amount;
+
+        ResourceManager.instance.AddResources(amount, resourceType);
     }
 
     public int TakeResourceFromCamp(int amount)
@@ -59,7 +72,7 @@ public class ResourceCamp : MonoBehaviour
 
     void CheckIfEmpty()
     {
-        if (campType != ResourceType.None && IsEmpty())
+        if (campType != ResourceType.NONE && IsEmpty())
             DeAssignCampType();
     }
 
@@ -73,7 +86,7 @@ public class ResourceCamp : MonoBehaviour
 
     void AssignCampType(ResourceType resourceType)
     {
-        if (campType != ResourceType.None)
+        if (campType != ResourceType.NONE)
         {
             Debug.Log("Camp " + this.gameObject + " is already assigned! Can't assign new type.");
             return;
@@ -81,13 +94,13 @@ public class ResourceCamp : MonoBehaviour
 
         switch (resourceType)
         {
-            case ResourceType.Food:
+            case ResourceType.FOOD:
                 transform.Find(foodStuffName).gameObject.SetActive(true);
                 break;
-            case ResourceType.Gold:
+            case ResourceType.GOLD:
                 transform.Find(goldStuffName).gameObject.SetActive(true);
                 break;
-            case ResourceType.Wood:
+            case ResourceType.WOOD:
                 transform.Find(woodStuffName).gameObject.SetActive(true);
                 break;
         }
@@ -104,17 +117,19 @@ public class ResourceCamp : MonoBehaviour
 
         switch (campType)
         {
-            case ResourceType.Food:
+            case ResourceType.FOOD:
                 transform.Find(foodStuffName).gameObject.SetActive(false);
                 break;
-            case ResourceType.Gold:
+            case ResourceType.GOLD:
                 transform.Find(goldStuffName).gameObject.SetActive(false);
                 break;
-            case ResourceType.Wood:
+            case ResourceType.WOOD:
                 transform.Find(woodStuffName).gameObject.SetActive(false);
                 break;
+            default:
+                return;
         }
-        campType = ResourceType.None;
+        campType = ResourceType.NONE;
     }
 
 }

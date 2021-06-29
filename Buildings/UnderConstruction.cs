@@ -5,7 +5,6 @@ using UnityEngine;
 [RequireComponent(typeof(Building))]
 public class UnderConstruction : MonoBehaviour
 {
-    public GameObject parentBuildingsGO;
     public GameObject constructedBuildingPrefab;
 
     private Building building;
@@ -32,6 +31,12 @@ public class UnderConstruction : MonoBehaviour
         return amountConstructed * 100 / building.buildingStats.constructionTime;
     }
 
+
+    public float GetAmountConstructed()
+    {
+        return amountConstructed;
+    }
+
     private void OnTriggerStay(Collider other)
     {
         if(other.gameObject.CompareTag("Unit"))
@@ -39,7 +44,7 @@ public class UnderConstruction : MonoBehaviour
             Unit unit = other.GetComponent<Unit>();
             if (unit.worker != null)
             {
-                if (unit.target == transform.position && unit.unitState == UnitState.moving)
+                if (unit.target == transform.position && unit.unitState == UnitState.MOVING)
                     unit.worker.SetConstructionSiteReached(true);
                 else
                     unit.worker.SetConstructionSiteReached(false);
@@ -49,8 +54,8 @@ public class UnderConstruction : MonoBehaviour
 
     private void FinishConstruction()
     {
-        GameObject finishedBuilding = Instantiate(constructedBuildingPrefab, transform.position, transform.rotation, parentBuildingsGO.transform);
-        finishedBuilding.GetComponent<Building>().SetInitialHitpoints(building.GetCurrentHitpoints());
+        GameObject finishedBuilding = Instantiate(constructedBuildingPrefab, transform.position, transform.rotation, PrefabManager.instance.buildingsTransformParentGO.transform);
+        finishedBuilding.GetComponent<Building>().SetCurrentHitpoints(building.GetCurrentHitpoints());
         Destroy(gameObject);
     }
 }

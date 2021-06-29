@@ -32,7 +32,7 @@ public class SelectionManager : MonoBehaviour
     private bool doubleClicked = false;
 
 
-    void Start()
+    void Awake()
     {
         if (instance == null)
             instance = this;
@@ -134,14 +134,15 @@ public class SelectionManager : MonoBehaviour
             Building building = selectionHit.collider.GetComponent<Building>();
             if (unit != null)
             {
-                if (CheckDoubleClick(unit))
-                    return;
+                if(unit.unitStats.unitTeam == Team.PLAYER)
+                    if (CheckDoubleClick(unit))
+                        return;
                 if(Input.GetKey(KeyCode.LeftControl) && selectedUnits.Contains(unit)) // Deselect the unit if ctrl is pressed while single selecting
                 {
                     selectedUnits.Remove(unit);
                     unit.SetSelected(false);
                 }
-                else if (!selectedUnits.Contains(unit) && unit.unitStats.unitTeam == Team.Player)
+                else if (!selectedUnits.Contains(unit) && unit.unitStats.unitTeam == Team.PLAYER)
                 {
                     selectedUnits.Add(unit);
                     unit.SetSelected(true);
@@ -157,7 +158,7 @@ public class SelectionManager : MonoBehaviour
             }
             else //If we didn't hit a unit
             {
-                 // do I need this???
+                 // no hit
             }
         }
         UIManager.instance.UpdateSelectedInteractionUI();
@@ -171,7 +172,7 @@ public class SelectionManager : MonoBehaviour
         Vector3[] selectionCorners = { upperLeftCorner, upperRightCorner, lowerLeftCorner, lowerRightCorner }; //The order matters
         Vector3[] selectionMeshVertices = new Vector3[5];
 
-        selectionMeshVertices[0] = Camera.main.transform.position; //First vertice is at camera's position
+        selectionMeshVertices[0] = Camera.main.transform.position; //First vertix is at camera's position
 
         for (int i = 0; i < 4; i++)
         {
@@ -187,7 +188,7 @@ public class SelectionManager : MonoBehaviour
         //We generate a mesh with 5 vertices: one from the camera and the others being our selection corners
         Mesh selectionMesh = GenerateSelectionMesh(selectionMeshVertices);
 
-        //We add a collider to out generated mesh so we can detect the units that are inside it
+        //We add a collider to our generated mesh so we can detect the units that are inside it
         MeshCollider selectionBox = gameObject.AddComponent<MeshCollider>();
         selectionBox.sharedMesh = selectionMesh;
         selectionBox.convex = true;
@@ -203,7 +204,7 @@ public class SelectionManager : MonoBehaviour
         Unit unit = other.gameObject.GetComponent<Unit>();
         if (unit != null)
         {
-            if (!selectedUnits.Contains(unit) && unit.unitStats.unitTeam == Team.Player)
+            if (!selectedUnits.Contains(unit) && unit.unitStats.unitTeam == Team.PLAYER)
             {
                 if (doubleClicked && unit.unitStats.unitName != lastClickedUnit.unitStats.unitName) //Double click selection check
                     return;
@@ -334,5 +335,28 @@ public class SelectionManager : MonoBehaviour
     public bool IsDragging()
     {
         return isDragging;
+    }
+
+    public Unit ClosestUnitToSpot(Vector3 spot, bool workersOnly = false)
+    {
+        if (selectedUnits.Count == 0)
+            return null;
+        Unit closestUnit = selectedUnits[0];
+        float minDistance = Vector3.Distance(closestUnit.transform.position, spot);
+        for (int i = 1; i < selectedUnits.Count; i++)
+        {
+            if (workersOnly && selectedUnits[i].worker == null)
+                continue;
+            float distance = Vector3.Distance(selectedUnits[i].transform.position, spot);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestUnit = selectedUnits[i];
+            }
+        }
+        if (workersOnly && closestUnit.worker == null)
+            return null;
+        else
+            return closestUnit;
     }
 }
